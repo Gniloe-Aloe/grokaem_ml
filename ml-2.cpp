@@ -97,35 +97,99 @@ void neural_network(double& weight, const double& goal_pred, const double& input
 }
 
 //goal - матрица верных значений(идти/не идти), data - матрица огней светофора 
-void streerlights_neunet(My_matrix<double>& weights, const My_matrix<double>& goal, const My_matrix<double>& data) {
-	double alpha = 0.1;
+void streerlights_neunet(std::vector<double>& weights, const My_matrix<double>& goal, const My_matrix<double>& data) {
+	double alpha = 0.01;
 	
 	std::vector<double> pred_vec = { 0, 0, 0 };//прогноз
-	for (size_t j = 0; j < 5; ++j) {
-		for (size_t i = 0; i < data.height; ++i) {//перебираем все наборы огней светофора (их 6)
+	for (size_t learning_iteration = 0; learning_iteration < 10000; ++learning_iteration) {
+		for (size_t number_of_dataset = 0; number_of_dataset < data.height; ++number_of_dataset) {//перебираем все наборы огней светофора (их 6)
 			double error_for_all_lights = 0;
 			//перемножаем веса на вошедшие данные(перемножение векторов)
-			pred_vec[0] = weights.matrix[0][0] * data.matrix[i][0];
+			/*pred_vec[0] = weights.matrix[0][0] * data.matrix[i][0];
 			pred_vec[1] = weights.matrix[0][1] * data.matrix[i][1];
-			pred_vec[2] = weights.matrix[0][2] * data.matrix[i][2];
+			pred_vec[2] = weights.matrix[0][2] * data.matrix[i][2];*/
+			for (size_t position = 0; position < pred_vec.size(); ++position)
+				pred_vec[position] = weights[position] * data.matrix[number_of_dataset][position];
+			
+				
 
 			//сумма всех весов
-			double prediction = std::accumulate(pred_vec.begin(), pred_vec.end(), 0.);
-			double error = std::pow(goal.matrix[i][0] - prediction, 2);
+			double prediction_accumulate = std::accumulate(pred_vec.begin(), pred_vec.end(), 0.);
+			//квадратичная ошибка
+			double error = std::pow(prediction_accumulate - goal.matrix[number_of_dataset][0], 2);
 			error_for_all_lights += error;
-			double delta = prediction - goal.matrix[i][0];
+			//разница между предсказанием и верным результатом
+			//Положительное значение delta указывает, что прогноз имеет слишком большое
+			//значение, а от­рицательное — что слишком маленькое.
+			double delta = prediction_accumulate - goal.matrix[number_of_dataset][0];
 
-			weights.matrix[0][0] -= alpha * delta * data.matrix[i][0];
-			weights.matrix[0][1] -= alpha * delta * data.matrix[i][1];
-			weights.matrix[0][2] -= alpha * delta * data.matrix[i][2];
+			/*weights.matrix[0][0] -= alpha * delta * data.matrix[number_of_dataset][0];
+			weights.matrix[0][1] -= alpha * delta * data.matrix[number_of_dataset][1];
+			weights.matrix[0][2] -= alpha * delta * data.matrix[number_of_dataset][2];*/
+			//корректировка весов. получаем приращение weight_delta
+			for(size_t position_in_dataset = 0; position_in_dataset < weights.size(); ++position_in_dataset)
+				weights[position_in_dataset] -= alpha * delta * data.matrix[number_of_dataset][position_in_dataset];
 
-			std::cout << "error: " << error_for_all_lights << std::endl;
+			std::cout << "error: " << error_for_all_lights << '\t' << " delta: " << delta << std::endl;
+			if (error_for_all_lights == 0)return;
 
 			//std::cout << "pred[0] " << pred[0] << "\tpred[1] " << pred[1] << "\tpred[2] " << pred[2] << std::endl;
 		}
 		std::cout << '\n';
 	}
 }
+
+//goal - матрица верных значений(идти/не идти), data - матрица огней светофора 
+void streerlights_neunet_test(std::vector<double>& weights, const My_matrix<double>& goal, const My_matrix<double>& data) {
+	double alpha = 0.001;
+
+	std::vector<double> pred_vec = { 0, 0, 0 };//прогноз
+	for (size_t learning_iteration = 0; learning_iteration < 10000; ++learning_iteration) {
+		for (size_t number_of_dataset = 0; number_of_dataset < data.height; ++number_of_dataset) {//перебираем все наборы огней светофора (их 6)
+			double error_for_all_lights = 0;
+			//перемножаем веса на вошедшие данные(перемножение векторов)
+			/*pred_vec[0] = weights.matrix[0][0] * data.matrix[i][0];
+			pred_vec[1] = weights.matrix[0][1] * data.matrix[i][1];
+			pred_vec[2] = weights.matrix[0][2] * data.matrix[i][2];*/
+			for (size_t position = 0; position < pred_vec.size(); ++position)
+				pred_vec[position] = weights[position] * data.matrix[number_of_dataset][position];
+
+
+
+			//сумма всех весов
+			double prediction_accumulate = std::accumulate(pred_vec.begin(), pred_vec.end(), 0.);
+			//квадратичная ошибка
+			double error = std::pow(prediction_accumulate - goal.matrix[number_of_dataset][0], 2);
+			error_for_all_lights += error;
+			//разница между предсказанием и верным результатом
+			//Положительное значение delta указывает, что прогноз имеет слишком большое
+			//значение, а от­рицательное — что слишком маленькое.
+			double delta = prediction_accumulate - goal.matrix[number_of_dataset][0];
+			
+			//дельты
+			std::vector<double> weight_deltas{ 0, 0, 0 };
+			for (int k = 0; k < 3; ++k) {
+				weight_deltas[k] = delta * data.matrix[number_of_dataset][k];
+			}
+
+			/*weights.matrix[0][0] -= alpha * delta * data.matrix[number_of_dataset][0];
+			weights.matrix[0][1] -= alpha * delta * data.matrix[number_of_dataset][1];
+			weights.matrix[0][2] -= alpha * delta * data.matrix[number_of_dataset][2];*/
+			//корректировка весов. получаем приращение weight_delta
+			for (size_t position_in_dataset = 0; position_in_dataset < weights.size(); ++position_in_dataset)
+				weights[position_in_dataset] -= alpha * weight_deltas[position_in_dataset];
+
+			
+
+			std::cout << "error: " << error_for_all_lights << '\t' << " delta: " << delta << std::endl;
+			if (error_for_all_lights == 0)return;
+
+			//std::cout << "pred[0] " << pred[0] << "\tpred[1] " << pred[1] << "\tpred[2] " << pred[2] << std::endl;
+		}
+		std::cout << '\n';
+	}
+}
+
 
 int main()
 {
@@ -152,10 +216,16 @@ int main()
 	};
 	walk_vs_stop.print();
 	//матрица весеов для огней светофора
-	My_matrix<double> weights(1, 3);
-	weights.matrix = { {0.5, 0.48, -0.7} };
-	weights.print();
-	streerlights_neunet(weights, walk_vs_stop, streetlights);
+	//My_matrix<double> weights(1, 3);
+	//weights.matrix = { {0.5, 0.48, -0.7} };
+	//weights.matrix = { {1., 1., 1.} };
+	std::vector<double> weights = { 0.48, -0.1, 0.06 };
+	streerlights_neunet_test(weights, walk_vs_stop, streetlights);
+	std::cout << "final weights:\n";
+	for (size_t i = 0; i < weights.size(); ++i) {
+		std::cout << weights[i] << '\t';
+	}
+	std::cout << '\n';
 	//double weight = 0.5;
 	//double goal_pred = 20;
 	//double input = 4;
